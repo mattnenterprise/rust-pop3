@@ -1,0 +1,17 @@
+[package]
+
+name = "pop3"
+version = "0.0.1"
+authors = ["Matt McCoy <mattnenterprise@yahoo.com>"]
+
+[lib]
+name = "pop3"
+path = "src/pop3.rs"
+
+[[bin]]
+name = "example"
+path = "example.rs"
+
+[dependencies.openssl]
+
+git = "https://github.com/sfackler/rust-openssl.git"
