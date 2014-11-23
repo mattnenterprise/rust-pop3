@@ -7,8 +7,13 @@ extern crate regex;
 
 #[phase(plugin)] extern crate regex_macros;
 
+
+use POP3StreamTypes::{Basic, Ssl};
+use POP3Command::{Greet, User, Pass, Stat, ListAll, ListOne, Retr, Dele, Noop, Rset, Quit};
+use POP3Result::{POP3Ok, POP3Err, POP3Stat, POP3List, POP3Message};
 use std::string::String;
-use std::io::{IoResult, TcpStream};
+use std::io::{IoResult, TcpStream, IoError};
+use std::io::IoErrorKind::OtherIoError;
 use openssl::ssl::{SslContext, SslStream};
 
 enum POP3StreamTypes {
@@ -43,29 +48,27 @@ impl POP3Stream {
 		let connect_string = format!("{}:{}", host, port);
 		let tcp_stream = try!(TcpStream::connect(connect_string.as_slice()));
 		let mut socket = match ssl_context {
-			Some(context) => POP3Stream {stream: POP3StreamTypes::Ssl(SslStream::new(&context, tcp_stream).unwrap()), host: host, port: port, is_authenticated: false},
-			None => POP3Stream {stream: POP3StreamTypes::Basic(tcp_stream), host: host, port: port, is_authenticated: false},
+			Some(context) => POP3Stream {stream: Ssl(SslStream::new(&context, tcp_stream).unwrap()), host: host, port: port, is_authenticated: false},
+			None => POP3Stream {stream: Basic(tcp_stream), host: host, port: port, is_authenticated: false},
 		};
-		match socket.read_response(POP3Command::Greet) {
-			Ok(_) => {
-				//Do nothing
-			},
-			Err(_) => panic!("Failure to connect")
+		match socket.read_response(Greet) {
+			Ok(_) => (),
+			Err(_) => return Err(IoError{ kind: OtherIoError, desc: "Fauled to read greet response", detail: None})
 		}
 		Ok(socket)
 	}
 
 	fn write_str(&mut self, s: &str) -> IoResult<()> {
 		match self.stream {
-			POP3StreamTypes::Ssl(ref mut stream) => stream.write_str(s),
-			POP3StreamTypes::Basic(ref mut stream) => stream.write_str(s),
+			Ssl(ref mut stream) => stream.write_str(s),
+			Basic(ref mut stream) => stream.write_str(s),
 		}
 	}
 
 	fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
 		match self.stream {
-			POP3StreamTypes::Ssl(ref mut stream) => stream.read(buf),
-			POP3StreamTypes::Basic(ref mut stream) => stream.read(buf),
+			Ssl(ref mut stream) => stream.read(buf),
+			Basic(ref mut stream) => stream.read(buf),
 		}
 	}
 
@@ -77,15 +80,15 @@ impl POP3Stream {
 			Ok(_) => {},
 			Err(_) => panic!("Error writing"),
 		}
-		match self.read_response(POP3Command::User) {
+		match self.read_response(User) {
 			Ok(_) => {
 				match self.write_str(pass_command.as_slice()) {
 					Ok(_) => self.is_authenticated = true,
 					Err(_) => panic!("Error writing"),
 				}
-				match self.read_response(POP3Command::Pass) {
+				match self.read_response(Pass) {
 					Ok(_) => {
-						POP3Result::POP3Ok
+						POP3Ok
 					},
 					Err(_) => panic!("Failure to use PASS")
 				}
@@ -104,14 +107,14 @@ impl POP3Stream {
 			Ok(_) => {},
 			Err(_) => panic!("Error writing"),
 		}
-		match self.read_response(POP3Command::Stat) {
+		match self.read_response(Stat) {
 			Ok(res) => {
 				match res.result {
 					Some(s) => s,
-					None => POP3Result::POP3Err
+					None => POP3Err
 				}
 			},
-			Err(_) => POP3Result::POP3Err
+			Err(_) => POP3Err
 		}
 	}
 
@@ -125,8 +128,8 @@ impl POP3Stream {
 							None => format!("LIST\r\n"),
 						};
 		let command_type = match message_number {
-							Some(_) => POP3Command::ListOne,
-							None => POP3Command::ListAll,
+							Some(_) => ListOne,
+							None => ListAll,
 						};
 
 		match self.write_str(list_command.as_slice()) {
@@ -138,10 +141,10 @@ impl POP3Stream {
 			Ok(res) => {
 				match res.result {
 					Some(s) => s,
-					None => POP3Result::POP3Err
+					None => POP3Err
 				}
 			},
-			Err(_) => POP3Result::POP3Err
+			Err(_) => POP3Err
 		}
 	}
 
@@ -157,14 +160,14 @@ impl POP3Stream {
 			Err(_) => panic!("Error writing"),
 		}
 
-		match self.read_response(POP3Command::Retr) {
+		match self.read_response(Retr) {
 			Ok(res) => {
 				match res.result {
 					Some(s) => s,
-					None => POP3Result::POP3Err
+					None => POP3Err
 				}
 			},
-			Err(_) => POP3Result::POP3Err
+			Err(_) => POP3Err
 		}
 	}
 
@@ -180,14 +183,14 @@ impl POP3Stream {
 			Err(_) => panic!("Error writing"),
 		}
 
-		match self.read_response(POP3Command::Dele) {
+		match self.read_response(Dele) {
 			Ok(res) => {
 				match res.result {
 					Some(s) => s,
-					None => POP3Result::POP3Err
+					None => POP3Err
 				}
 			},
-			Err(_) => POP3Result::POP3Err
+			Err(_) => POP3Err
 		}
 	}
 
@@ -199,14 +202,14 @@ impl POP3Stream {
 			Err(_) => panic!("Error writing"),
 		}
 
-		match self.read_response(POP3Command::Rset) {
+		match self.read_response(Rset) {
 			Ok(res) => {
 				match res.result {
 					Some(s) => s,
-					None => POP3Result::POP3Err
+					None => POP3Err
 				}
 			},
-			Err(_) => POP3Result::POP3Err
+			Err(_) => POP3Err
 		}
 	}
 
@@ -218,14 +221,14 @@ impl POP3Stream {
 			Err(_) => panic!("Error writing"),
 		}
 
-		match self.read_response(POP3Command::Quit) {
+		match self.read_response(Quit) {
 			Ok(res) => {
 				match res.result {
 					Some(s) => s,
-					None => POP3Result::POP3Err
+					None => POP3Err
 				}
 			},
-			Err(_) => POP3Result::POP3Err
+			Err(_) => POP3Err
 		}
 	}
 
@@ -237,11 +240,11 @@ impl POP3Stream {
 			Err(_) => panic!("Error writing"),
 		}
 
-		match self.read_response(POP3Command::Noop) {
+		match self.read_response(Noop) {
 			Ok(res) => {
 				match res.result {
 					Some(s) => s,
-					None => POP3Result::POP3Err
+					None => POP3Err
 				}
 			},
 			Err(_) => panic!("Error noop")
@@ -325,40 +328,40 @@ impl POP3Response {
 			if ok_regex.is_match(l.as_slice()) {
 				self.lines.push(l);
 				match command {
-					POP3Command::Greet|POP3Command::User|POP3Command::Pass|POP3Command::Quit|POP3Command::Dele|POP3Command::Rset => {
-						self.result = Some(POP3Result::POP3Ok);
+					Greet|User|Pass|Quit|Dele|Rset => {
+						self.result = Some(POP3Ok);
 						self.complete = true;
 					},
-					POP3Command::Stat => {
+					Stat => {
 						self.complete = true;
 						self.parse_stat()
 					},
-					POP3Command::ListAll => {
+					ListAll => {
 
 					},
-					POP3Command::ListOne => {
+					ListOne => {
 						self.complete = true;
 						self.parse_list_one();
 					},
-					POP3Command::Retr => {
+					Retr => {
 
 					},
 					_ => self.complete = true,
 				}
 			} else if err_regex.is_match(l.as_slice()) {
 				self.lines.push(l);
-				self.result = Some(POP3Result::POP3Err);
+				self.result = Some(POP3Err);
 				self.complete = true;
 			}
 		} else {
 			if ending_regex.is_match(l.as_slice()) {
 				self.lines.push(l);
 				match command {
-					POP3Command::ListAll => {
+					ListAll => {
 						self.complete = true;
 						self.parse_list_all();
 					},
-					POP3Command::Retr => {
+					Retr => {
 						self.complete = true;
 						self.parse_message();
 					},
@@ -375,7 +378,7 @@ impl POP3Response {
 		let caps = stat_regex.captures(self.lines[0].as_slice()).unwrap();
 		let num_emails = from_str(caps.at(1));
 		let total_email_size = from_str(caps.at(2));
-		self.result = Some(POP3Result::POP3Stat {
+		self.result = Some(POP3Stat {
 			num_email: num_emails.unwrap(),
 			mailbox_size: total_email_size.unwrap()
 		})
@@ -391,7 +394,7 @@ impl POP3Response {
 			let message_size = from_str(caps.at(2));
 			metadata.push(POP3EmailMetadata{ message_id: message_id.unwrap(), message_size: message_size.unwrap()});
 		}
-		self.result = Some(POP3Result::POP3List {
+		self.result = Some(POP3List {
 			emails_metadata: metadata
 		});
 	}
@@ -401,7 +404,7 @@ impl POP3Response {
 		let caps = stat_regex.captures(self.lines[0].as_slice()).unwrap();
 		let message_id = from_str(caps.at(1));
 		let message_size = from_str(caps.at(2));
-		self.result = Some(POP3Result::POP3List {
+		self.result = Some(POP3List {
 			emails_metadata: vec![POP3EmailMetadata{ message_id: message_id.unwrap(), message_size: message_size.unwrap()}]
 		});
 	}
@@ -411,7 +414,7 @@ impl POP3Response {
 		for i in range(1, self.lines.len()-1) {
 			raw.push(String::from_str(self.lines[i].as_slice()));
 		}
-		self.result = Some(POP3Result::POP3Message{
+		self.result = Some(POP3Message{
 			raw: raw
 		});
 	}

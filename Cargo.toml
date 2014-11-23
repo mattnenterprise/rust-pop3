@@ -3,6 +3,10 @@
 name = "pop3"
 version = "0.0.1"
 authors = ["Matt McCoy <mattnenterprise@yahoo.com>"]
+repository = "https://github.com/mattnenterprise/rust-pop3"
+description = "POP3 client for Rust"
+readme = "README.md"
+license = "MIT"
 
 [lib]
 name = "pop3"
@@ -12,6 +16,6 @@ path = "src/pop3.rs"
 name = "example"
 path = "example.rs"
 
-[dependencies.openssl]
+[dependencies]
 
-git = "https://github.com/sfackler/rust-openssl.git"
+openssl = "~1.0.0"
