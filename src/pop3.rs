@@ -16,11 +16,13 @@ use std::io::{IoResult, TcpStream, IoError};
 use std::io::IoErrorKind::OtherIoError;
 use openssl::ssl::{SslContext, SslStream};
 
+/// Wrapper for a regular TcpStream or a SslStream.
 enum POP3StreamTypes {
 	Basic(TcpStream),
 	Ssl(SslStream<TcpStream>)
 }
 
+/// The stream to use for interfacing with the POP3 Server.
 pub struct POP3Stream {
 	stream: POP3StreamTypes,
 	pub host: &'static str,
@@ -28,6 +30,7 @@ pub struct POP3Stream {
 	pub is_authenticated: bool
 }
 
+/// List of POP3 Commands
 enum POP3Command {
 	Greet,
 	User,
@@ -44,6 +47,7 @@ enum POP3Command {
 
 impl POP3Stream {
 
+	/// Creates a new POP3Stream.
 	pub fn connect(host: &'static str, port: u16, ssl_context: Option<SslContext>) -> IoResult<POP3Stream> {
 		let connect_string = format!("{}:{}", host, port);
 		let tcp_stream = try!(TcpStream::connect(connect_string.as_slice()));
@@ -72,6 +76,7 @@ impl POP3Stream {
 		}
 	}
 
+	/// Login to the POP3 server.
 	pub fn login(&mut self, username: &str, password: &str) -> POP3Result {
 		let user_command = format!("USER {}\r\n", username);
 		let pass_command = format!("PASS {}\r\n", password);
@@ -97,6 +102,7 @@ impl POP3Stream {
 		}
 	}
 
+	/// Gives the current number of messages in the mailbox and the total size in bytes of the mailbox.
 	pub fn stat(&mut self) -> POP3Result {
 		if !self.is_authenticated {
 			panic!("login");
@@ -118,6 +124,7 @@ impl POP3Stream {
 		}
 	}
 
+	/// List displays a summary of messages where each message number is shown and the size of the message in bytes. 
 	pub fn list(&mut self, message_number: Option<int>) -> POP3Result {
 		if !self.is_authenticated {
 			panic!("login");
@@ -148,6 +155,7 @@ impl POP3Stream {
 		}
 	}
 
+	/// retrieves the message of the message id given.
 	pub fn retr(&mut self, message_id: int) -> POP3Result {
 		if !self.is_authenticated {
 			panic!("login");
@@ -171,6 +179,7 @@ impl POP3Stream {
 		}
 	}
 
+	/// Delete the message with the given message id.
 	pub fn dele(&mut self, message_id: int) -> POP3Result {
 		if !self.is_authenticated {
 			panic!("login");
@@ -194,7 +203,12 @@ impl POP3Stream {
 		}
 	}
 
+	/// This resets the session to its original state.
 	pub fn rset(&mut self) -> POP3Result {
+		if !self.is_authenticated {
+			panic!("Not Logged In");
+		}
+
 		let retr_command = format!("RETR\r\n");
 
 		match self.write_str(retr_command.as_slice()) {
@@ -213,6 +227,7 @@ impl POP3Stream {
 		}
 	}
 
+	/// Quits the current session.
 	pub fn quit(&mut self) -> POP3Result {
 		let quit_command = "QUIT\r\n";
 
@@ -232,7 +247,12 @@ impl POP3Stream {
 		}
 	}
 
+	/// Doesn't do anything. This is usually just used to keep the connection open.
 	pub fn noop(&mut self) -> POP3Result {
+		if !self.is_authenticated {
+			panic!("Not Logged In");
+		}
+
 		let noop_command = "noop\r\n";
 
 		match self.write_str(noop_command) {
