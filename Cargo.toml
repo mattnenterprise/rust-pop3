@@ -16,5 +16,5 @@ path = "src/pop3.rs"
 name = "example"
 path = "example.rs"
 
-[dependencies.openssl]
-git = "https://github.com/sfackler/rust-openssl"
+[dependencies]
+openssl = "0.2.15"
