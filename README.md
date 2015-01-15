@@ -21,14 +21,12 @@ git = "https://github.com/mattnenterprise/rust-pop3"
 extern crate pop3;
 extern crate openssl;
 
-use openssl::ssl::{SslContext, Sslv23};
+use openssl::ssl::{SslContext, SslMethod};
 use pop3::POP3Stream;
-use pop3::POP3Stat;
-use pop3::POP3List;
-use pop3::POP3Message;
+use pop3::POP3Result::{POP3Stat, POP3List, POP3Message};
 
 fn main() {
-	let mut gmail_socket = match POP3Stream::connect("pop.gmail.com", 995, Some(SslContext::new(Sslv23).unwrap())) {
+    let mut gmail_socket = match POP3Stream::connect("pop.gmail.com", 995, Some(SslContext::new(SslMethod::Sslv23).unwrap())) {
         Ok(s) => s,
         Err(e) => panic!("{}", e)
     };
@@ -37,9 +35,9 @@ fn main() {
 
     let stat = gmail_socket.stat();
     match stat {
-    	POP3Stat {num_email,
-				  mailbox_size} => println!("num_email: {},  mailbox_size:{}", num_email, mailbox_size),
-		_ => println!("Err for stat"),
+        POP3Stat {num_email,
+                  mailbox_size} => println!("num_email: {},  mailbox_size:{}", num_email, mailbox_size),
+        _ => println!("Err for stat"),
     }
 
     let list_all = gmail_socket.list(None);
