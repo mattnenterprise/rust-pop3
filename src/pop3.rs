@@ -1,20 +1,17 @@
 #![crate_name = "pop3"]
 #![crate_type = "lib"]
-#![feature(phase)]
 
 extern crate openssl;
 extern crate regex;
 
-#[phase(plugin)] extern crate regex_macros;
-
-
 use POP3StreamTypes::{Basic, Ssl};
 use POP3Command::{Greet, User, Pass, Stat, ListAll, ListOne, Retr, Dele, Noop, Rset, Quit};
-use POP3Result::{POP3Ok, POP3Err, POP3Stat, POP3List, POP3Message};
 use std::string::String;
 use std::io::{IoResult, TcpStream, IoError};
 use std::io::IoErrorKind::OtherIoError;
 use openssl::ssl::{SslContext, SslStream};
+use std::str::FromStr;
+use regex::Regex;
 
 /// Wrapper for a regular TcpStream or a SslStream.
 enum POP3StreamTypes {
@@ -31,6 +28,7 @@ pub struct POP3Stream {
 }
 
 /// List of POP3 Commands
+#[derive(Clone)]
 enum POP3Command {
 	Greet,
 	User,
@@ -93,7 +91,7 @@ impl POP3Stream {
 				}
 				match self.read_response(Pass) {
 					Ok(_) => {
-						POP3Ok
+						POP3Result::POP3Ok
 					},
 					Err(_) => panic!("Failure to use PASS")
 				}
@@ -117,10 +115,10 @@ impl POP3Stream {
 			Ok(res) => {
 				match res.result {
 					Some(s) => s,
-					None => POP3Err
+					None => POP3Result::POP3Err
 				}
 			},
-			Err(_) => POP3Err
+			Err(_) => POP3Result::POP3Err
 		}
 	}
 
@@ -148,10 +146,10 @@ impl POP3Stream {
 			Ok(res) => {
 				match res.result {
 					Some(s) => s,
-					None => POP3Err
+					None => POP3Result::POP3Err
 				}
 			},
-			Err(_) => POP3Err
+			Err(_) => POP3Result::POP3Err
 		}
 	}
 
@@ -172,10 +170,10 @@ impl POP3Stream {
 			Ok(res) => {
 				match res.result {
 					Some(s) => s,
-					None => POP3Err
+					None => POP3Result::POP3Err
 				}
 			},
-			Err(_) => POP3Err
+			Err(_) => POP3Result::POP3Err
 		}
 	}
 
@@ -196,10 +194,10 @@ impl POP3Stream {
 			Ok(res) => {
 				match res.result {
 					Some(s) => s,
-					None => POP3Err
+					None => POP3Result::POP3Err
 				}
 			},
-			Err(_) => POP3Err
+			Err(_) => POP3Result::POP3Err
 		}
 	}
 
@@ -220,10 +218,10 @@ impl POP3Stream {
 			Ok(res) => {
 				match res.result {
 					Some(s) => s,
-					None => POP3Err
+					None => POP3Result::POP3Err
 				}
 			},
-			Err(_) => POP3Err
+			Err(_) => POP3Result::POP3Err
 		}
 	}
 
@@ -240,10 +238,10 @@ impl POP3Stream {
 			Ok(res) => {
 				match res.result {
 					Some(s) => s,
-					None => POP3Err
+					None => POP3Result::POP3Err
 				}
 			},
-			Err(_) => POP3Err
+			Err(_) => POP3Result::POP3Err
 		}
 	}
 
@@ -264,7 +262,7 @@ impl POP3Stream {
 			Ok(res) => {
 				match res.result {
 					Some(s) => s,
-					None => POP3Err
+					None => POP3Result::POP3Err
 				}
 			},
 			Err(_) => panic!("Error noop")
@@ -272,7 +270,7 @@ impl POP3Stream {
 	}
 
 	fn read_response(&mut self, command: POP3Command) -> Result<Box<POP3Response>, Vec<u8>> {
-		let mut response = box POP3Response::new();
+		let mut response = Box::new(POP3Response::new());
 		//Carriage return
 		let cr = 0x0d;
 		//Line Feed
@@ -291,10 +289,10 @@ impl POP3Stream {
 
 			match String::from_utf8(line_buffer.clone()) {
         		Ok(res) => {
-          			response.add_line(res, command);
+          			response.add_line(res, command.clone());
             		line_buffer = Vec::new();
         		},
-        		Err(e) => return Err(e)
+        		Err(e) => return Err(e.into_bytes())
       		}
 		}
 		Ok(response)
@@ -338,18 +336,28 @@ impl POP3Response {
 
 	fn add_line(&mut self, line: String, command: POP3Command) {
 		let l = line.clone();
-		let ending_regex = regex!(r"^\.\r\n$");
+		let ending_regex = match Regex::new(r"^\.\r\n$") {
+			Ok(re) => re,
+			Err(_) => panic!("Invalid Regex!!"),
+		};
 		
 		//We are retreiving status line
 		if self.lines.len() == 0 {
-			let ok_regex = regex!(r"\+OK(.*)");
-			let err_regex = regex!(r"-ERR(.*)");
+			let ok_regex = match Regex::new(r"\+OK(.*)") {
+				Ok(re) => re,
+				Err(_) => panic!("Invalid Regex!!"),
+			};
+
+			let err_regex = match Regex::new(r"-ERR(.*)") {
+				Ok(re) => re,
+				Err(_) => panic!("Invalid Regex!!"),
+			};
 
 			if ok_regex.is_match(l.as_slice()) {
 				self.lines.push(l);
 				match command {
 					Greet|User|Pass|Quit|Dele|Rset => {
-						self.result = Some(POP3Ok);
+						self.result = Some(POP3Result::POP3Ok);
 						self.complete = true;
 					},
 					Stat => {
@@ -370,7 +378,7 @@ impl POP3Response {
 				}
 			} else if err_regex.is_match(l.as_slice()) {
 				self.lines.push(l);
-				self.result = Some(POP3Err);
+				self.result = Some(POP3Result::POP3Err);
 				self.complete = true;
 			}
 		} else {
@@ -394,37 +402,46 @@ impl POP3Response {
 	}
 
 	fn parse_stat(&mut self) {
-		let stat_regex = regex!(r"\+OK (\d+) (\d+)\r\n");
+		let stat_regex = match Regex::new(r"\+OK (\d+) (\d+)\r\n") {
+			Ok(re) => re,
+			Err(_) => panic!("Invalid Regex!!"),
+		};
 		let caps = stat_regex.captures(self.lines[0].as_slice()).unwrap();
-		let num_emails = from_str(caps.at(1));
-		let total_email_size = from_str(caps.at(2));
-		self.result = Some(POP3Stat {
+		let num_emails: Option<int> = FromStr::from_str(caps.at(1).unwrap());
+		let total_email_size: Option<int> = FromStr::from_str(caps.at(2).unwrap());
+		self.result = Some(POP3Result::POP3Stat {
 			num_email: num_emails.unwrap(),
 			mailbox_size: total_email_size.unwrap()
 		})
 	}
 
 	fn parse_list_all(&mut self) {
-		let message_data_regex = regex!(r"(\d+) (\d+)\r\n");
+		let message_data_regex = match Regex::new(r"(\d+) (\d+)\r\n") {
+			Ok(re) => re,
+			Err(_) => panic!("Invalid Regex!!"),
+		};
 		let mut metadata = Vec::new();
 
 		for i in range(1, self.lines.len()-1) {
 			let caps = message_data_regex.captures(self.lines[i].as_slice()).unwrap();
-			let message_id = from_str(caps.at(1));
-			let message_size = from_str(caps.at(2));
+			let message_id: Option<int> = FromStr::from_str(caps.at(1).unwrap());
+			let message_size: Option<int> = FromStr::from_str(caps.at(2).unwrap());
 			metadata.push(POP3EmailMetadata{ message_id: message_id.unwrap(), message_size: message_size.unwrap()});
 		}
-		self.result = Some(POP3List {
+		self.result = Some(POP3Result::POP3List {
 			emails_metadata: metadata
 		});
 	}
 
 	fn parse_list_one(&mut self) {
-		let stat_regex = regex!(r"\+OK (\d+) (\d+)\r\n");
+		let stat_regex = match Regex::new(r"\+OK (\d+) (\d+)\r\n") {
+			Ok(re) => re,
+			Err(_) => panic!("Invalid Regex!!"),
+		};
 		let caps = stat_regex.captures(self.lines[0].as_slice()).unwrap();
-		let message_id = from_str(caps.at(1));
-		let message_size = from_str(caps.at(2));
-		self.result = Some(POP3List {
+		let message_id: Option<int> = FromStr::from_str(caps.at(1).unwrap());
+		let message_size: Option<int> = FromStr::from_str(caps.at(2).unwrap());
+		self.result = Some(POP3Result::POP3List {
 			emails_metadata: vec![POP3EmailMetadata{ message_id: message_id.unwrap(), message_size: message_size.unwrap()}]
 		});
 	}
@@ -434,7 +451,7 @@ impl POP3Response {
 		for i in range(1, self.lines.len()-1) {
 			raw.push(String::from_str(self.lines[i].as_slice()));
 		}
-		self.result = Some(POP3Message{
+		self.result = Some(POP3Result::POP3Message{
 			raw: raw
 		});
 	}

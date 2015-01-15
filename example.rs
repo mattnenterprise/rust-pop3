@@ -1,11 +1,12 @@
 extern crate pop3;
 extern crate openssl;
 
-use openssl::ssl::{SslContext, Sslv23};
-use pop3::{POP3Stream, POP3Stat, POP3List, POP3Message};
+use openssl::ssl::{SslContext, SslMethod};
+use pop3::POP3Stream;
+use pop3::POP3Result::{POP3Stat, POP3List, POP3Message};
 
 fn main() {
-	let mut gmail_socket = match POP3Stream::connect("pop.gmail.com", 995, Some(SslContext::new(Sslv23).unwrap())) {
+	let mut gmail_socket = match POP3Stream::connect("pop.gmail.com", 995, Some(SslContext::new(SslMethod::Sslv23).unwrap())) {
         Ok(s) => s,
         Err(e) => panic!("{}", e)
     };
