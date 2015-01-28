@@ -12,8 +12,8 @@ support is wanted just pass in None. The library rust-openssl is used to support
 
 Add pop3 via your `Cargo.toml`:
 ```toml
-[dependencies.pop3]
-git = "https://github.com/mattnenterprise/rust-pop3"
+[dependencies]
+pop3 = "*"
 ```
 
 ### Usage
