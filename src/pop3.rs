@@ -7,8 +7,8 @@ extern crate regex;
 use POP3StreamTypes::{Basic, Ssl};
 use POP3Command::{Greet, User, Pass, Stat, ListAll, ListOne, Retr, Dele, Noop, Rset, Quit};
 use std::string::String;
-use std::io::{IoResult, TcpStream, IoError};
-use std::io::IoErrorKind::OtherIoError;
+use std::io::{Error, ErrorKind, Read, Result, Write};
+use std::net::TcpStream;
 use openssl::ssl::{SslContext, SslStream};
 use std::str::FromStr;
 use regex::Regex;
@@ -46,7 +46,7 @@ enum POP3Command {
 impl POP3Stream {
 
 	/// Creates a new POP3Stream.
-	pub fn connect(host: &'static str, port: u16, ssl_context: Option<SslContext>) -> IoResult<POP3Stream> {
+	pub fn connect(host: &'static str, port: u16, ssl_context: Option<SslContext>) -> Result<POP3Stream> {
 		let connect_string = format!("{}:{}", host, port);
 		let tcp_stream = try!(TcpStream::connect(connect_string.as_slice()));
 		let mut socket = match ssl_context {
@@ -55,19 +55,19 @@ impl POP3Stream {
 		};
 		match socket.read_response(Greet) {
 			Ok(_) => (),
-			Err(_) => return Err(IoError{ kind: OtherIoError, desc: "Fauled to read greet response", detail: None})
+			Err(_) => return Err(Error::new(ErrorKind::Other, "Failed to read greet response", None))
 		}
 		Ok(socket)
 	}
 
-	fn write_str(&mut self, s: &str) -> IoResult<()> {
+	fn write_str(&mut self, s: &str) -> Result<()> {
 		match self.stream {
-			Ssl(ref mut stream) => stream.write_str(s),
-			Basic(ref mut stream) => stream.write_str(s),
+			Ssl(ref mut stream) => stream.write_fmt(format_args!("{}", s)),
+			Basic(ref mut stream) => stream.write_fmt(format_args!("{}", s)),
 		}
 	}
 
-	fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+	fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
 		match self.stream {
 			Ssl(ref mut stream) => stream.read(buf),
 			Basic(ref mut stream) => stream.read(buf),
@@ -269,7 +269,7 @@ impl POP3Stream {
 		}
 	}
 
-	fn read_response(&mut self, command: POP3Command) -> Result<Box<POP3Response>, Vec<u8>> {
+	fn read_response(&mut self, command: POP3Command) -> Result<Box<POP3Response>> {
 		let mut response = Box::new(POP3Response::new());
 		//Carriage return
 		let cr = 0x0d;
@@ -292,7 +292,7 @@ impl POP3Stream {
           			response.add_line(res, command.clone());
             		line_buffer = Vec::new();
         		},
-        		Err(e) => return Err(e.into_bytes())
+        		Err(e) => return Err(Error::new(ErrorKind::Other, "Failed to read the response", None))
       		}
 		}
 		Ok(response)
@@ -407,8 +407,8 @@ impl POP3Response {
 			Err(_) => panic!("Invalid Regex!!"),
 		};
 		let caps = stat_regex.captures(self.lines[0].as_slice()).unwrap();
-		let num_emails: Option<int> = FromStr::from_str(caps.at(1).unwrap());
-		let total_email_size: Option<int> = FromStr::from_str(caps.at(2).unwrap());
+		let num_emails = FromStr::from_str(caps.at(1).unwrap());
+		let total_email_size = FromStr::from_str(caps.at(2).unwrap());
 		self.result = Some(POP3Result::POP3Stat {
 			num_email: num_emails.unwrap(),
 			mailbox_size: total_email_size.unwrap()
@@ -424,8 +424,8 @@ impl POP3Response {
 
 		for i in range(1, self.lines.len()-1) {
 			let caps = message_data_regex.captures(self.lines[i].as_slice()).unwrap();
-			let message_id: Option<int> = FromStr::from_str(caps.at(1).unwrap());
-			let message_size: Option<int> = FromStr::from_str(caps.at(2).unwrap());
+			let message_id = FromStr::from_str(caps.at(1).unwrap());
+			let message_size = FromStr::from_str(caps.at(2).unwrap());
 			metadata.push(POP3EmailMetadata{ message_id: message_id.unwrap(), message_size: message_size.unwrap()});
 		}
 		self.result = Some(POP3Result::POP3List {
@@ -439,8 +439,8 @@ impl POP3Response {
 			Err(_) => panic!("Invalid Regex!!"),
 		};
 		let caps = stat_regex.captures(self.lines[0].as_slice()).unwrap();
-		let message_id: Option<int> = FromStr::from_str(caps.at(1).unwrap());
-		let message_size: Option<int> = FromStr::from_str(caps.at(2).unwrap());
+		let message_id = FromStr::from_str(caps.at(1).unwrap());
+		let message_size = FromStr::from_str(caps.at(2).unwrap());
 		self.result = Some(POP3Result::POP3List {
 			emails_metadata: vec![POP3EmailMetadata{ message_id: message_id.unwrap(), message_size: message_size.unwrap()}]
 		});
