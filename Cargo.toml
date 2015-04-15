@@ -17,5 +17,5 @@ name = "example"
 path = "example.rs"
 
 [dependencies]
-openssl = "0.5.1"
-regex = "0.1.20"
+openssl = "0.6.0"
+regex = "0.1.28"
