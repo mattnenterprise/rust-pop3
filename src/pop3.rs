@@ -48,14 +48,14 @@ impl POP3Stream {
 	/// Creates a new POP3Stream.
 	pub fn connect(host: &'static str, port: u16, ssl_context: Option<SslContext>) -> Result<POP3Stream> {
 		let connect_string = format!("{}:{}", host, port);
-		let tcp_stream = try!(TcpStream::connect(connect_string.as_slice()));
+		let tcp_stream = try!(TcpStream::connect(&connect_string[..]));
 		let mut socket = match ssl_context {
 			Some(context) => POP3Stream {stream: Ssl(SslStream::new(&context, tcp_stream).unwrap()), host: host, port: port, is_authenticated: false},
 			None => POP3Stream {stream: Basic(tcp_stream), host: host, port: port, is_authenticated: false},
 		};
 		match socket.read_response(Greet) {
 			Ok(_) => (),
-			Err(_) => return Err(Error::new(ErrorKind::Other, "Failed to read greet response", None))
+			Err(_) => return Err(Error::new(ErrorKind::Other, "Failed to read greet response"))
 		}
 		Ok(socket)
 	}
@@ -79,13 +79,13 @@ impl POP3Stream {
 		let user_command = format!("USER {}\r\n", username);
 		let pass_command = format!("PASS {}\r\n", password);
 		//Send user command
-		match self.write_str(user_command.as_slice()) {
+		match self.write_str(&user_command) {
 			Ok(_) => {},
 			Err(_) => panic!("Error writing"),
 		}
 		match self.read_response(User) {
 			Ok(_) => {
-				match self.write_str(pass_command.as_slice()) {
+				match self.write_str(&pass_command) {
 					Ok(_) => self.is_authenticated = true,
 					Err(_) => panic!("Error writing"),
 				}
@@ -107,7 +107,7 @@ impl POP3Stream {
 		}
 
 		let stat_command = "STAT\r\n";
-		match self.write_str(stat_command.as_slice()) {
+		match self.write_str(&stat_command) {
 			Ok(_) => {},
 			Err(_) => panic!("Error writing"),
 		}
@@ -122,8 +122,8 @@ impl POP3Stream {
 		}
 	}
 
-	/// List displays a summary of messages where each message number is shown and the size of the message in bytes. 
-	pub fn list(&mut self, message_number: Option<int>) -> POP3Result {
+	/// List displays a summary of messages where each message number is shown and the size of the message in bytes.
+	pub fn list(&mut self, message_number: Option<i32>) -> POP3Result {
 		if !self.is_authenticated {
 			panic!("login");
 		}
@@ -137,7 +137,7 @@ impl POP3Stream {
 							None => ListAll,
 						};
 
-		match self.write_str(list_command.as_slice()) {
+		match self.write_str(&list_command) {
 			Ok(_) => {},
 			Err(_) => panic!("Error writing"),
 		}
@@ -154,14 +154,14 @@ impl POP3Stream {
 	}
 
 	/// retrieves the message of the message id given.
-	pub fn retr(&mut self, message_id: int) -> POP3Result {
+	pub fn retr(&mut self, message_id: i32) -> POP3Result {
 		if !self.is_authenticated {
 			panic!("login");
 		}
 
 		let retr_command = format!("RETR {}\r\n", message_id);
 
-		match self.write_str(retr_command.as_slice()) {
+		match self.write_str(&retr_command) {
 			Ok(_) => {},
 			Err(_) => panic!("Error writing"),
 		}
@@ -178,14 +178,14 @@ impl POP3Stream {
 	}
 
 	/// Delete the message with the given message id.
-	pub fn dele(&mut self, message_id: int) -> POP3Result {
+	pub fn dele(&mut self, message_id: i32) -> POP3Result {
 		if !self.is_authenticated {
 			panic!("login");
 		}
 
 		let dele_command = format!("DELE {}\r\n", message_id);
-		
-		match self.write_str(dele_command.as_slice()) {
+
+		match self.write_str(&dele_command) {
 			Ok(_) => {},
 			Err(_) => panic!("Error writing"),
 		}
@@ -209,7 +209,7 @@ impl POP3Stream {
 
 		let retr_command = format!("RETR\r\n");
 
-		match self.write_str(retr_command.as_slice()) {
+		match self.write_str(&retr_command) {
 			Ok(_) => {},
 			Err(_) => panic!("Error writing"),
 		}
@@ -229,7 +229,7 @@ impl POP3Stream {
 	pub fn quit(&mut self) -> POP3Result {
 		let quit_command = "QUIT\r\n";
 
-		match self.write_str(quit_command.as_slice()) {
+		match self.write_str(&quit_command) {
 			Ok(_) => {},
 			Err(_) => panic!("Error writing"),
 		}
@@ -292,7 +292,7 @@ impl POP3Stream {
           			response.add_line(res, command.clone());
             		line_buffer = Vec::new();
         		},
-        		Err(e) => return Err(Error::new(ErrorKind::Other, "Failed to read the response", None))
+        		Err(_) => return Err(Error::new(ErrorKind::Other, "Failed to read the response"))
       		}
 		}
 		Ok(response)
@@ -300,16 +300,16 @@ impl POP3Stream {
 }
 
 pub struct POP3EmailMetadata {
-	pub message_id: int,
-	pub message_size: int
+	pub message_id: i32,
+	pub message_size: i32
 }
 
 pub enum POP3Result {
 	POP3Ok,
 	POP3Err,
 	POP3Stat {
-		num_email: int,
-		mailbox_size: int
+		num_email: i32,
+		mailbox_size: i32
 	},
 	POP3List {
 		emails_metadata: Vec<POP3EmailMetadata>
@@ -340,7 +340,7 @@ impl POP3Response {
 			Ok(re) => re,
 			Err(_) => panic!("Invalid Regex!!"),
 		};
-		
+
 		//We are retreiving status line
 		if self.lines.len() == 0 {
 			let ok_regex = match Regex::new(r"\+OK(.*)") {
@@ -353,7 +353,7 @@ impl POP3Response {
 				Err(_) => panic!("Invalid Regex!!"),
 			};
 
-			if ok_regex.is_match(l.as_slice()) {
+			if ok_regex.is_match(&l) {
 				self.lines.push(l);
 				match command {
 					Greet|User|Pass|Quit|Dele|Rset => {
@@ -376,13 +376,13 @@ impl POP3Response {
 					},
 					_ => self.complete = true,
 				}
-			} else if err_regex.is_match(l.as_slice()) {
+			} else if err_regex.is_match(&l) {
 				self.lines.push(l);
 				self.result = Some(POP3Result::POP3Err);
 				self.complete = true;
 			}
 		} else {
-			if ending_regex.is_match(l.as_slice()) {
+			if ending_regex.is_match(&l) {
 				self.lines.push(l);
 				match command {
 					ListAll => {
@@ -406,7 +406,7 @@ impl POP3Response {
 			Ok(re) => re,
 			Err(_) => panic!("Invalid Regex!!"),
 		};
-		let caps = stat_regex.captures(self.lines[0].as_slice()).unwrap();
+		let caps = stat_regex.captures(&self.lines[0]).unwrap();
 		let num_emails = FromStr::from_str(caps.at(1).unwrap());
 		let total_email_size = FromStr::from_str(caps.at(2).unwrap());
 		self.result = Some(POP3Result::POP3Stat {
@@ -422,8 +422,8 @@ impl POP3Response {
 		};
 		let mut metadata = Vec::new();
 
-		for i in range(1, self.lines.len()-1) {
-			let caps = message_data_regex.captures(self.lines[i].as_slice()).unwrap();
+		for i in 1 .. self.lines.len()-1 {
+			let caps = message_data_regex.captures(&self.lines[i]).unwrap();
 			let message_id = FromStr::from_str(caps.at(1).unwrap());
 			let message_size = FromStr::from_str(caps.at(2).unwrap());
 			metadata.push(POP3EmailMetadata{ message_id: message_id.unwrap(), message_size: message_size.unwrap()});
@@ -438,7 +438,7 @@ impl POP3Response {
 			Ok(re) => re,
 			Err(_) => panic!("Invalid Regex!!"),
 		};
-		let caps = stat_regex.captures(self.lines[0].as_slice()).unwrap();
+		let caps = stat_regex.captures(&self.lines[0]).unwrap();
 		let message_id = FromStr::from_str(caps.at(1).unwrap());
 		let message_size = FromStr::from_str(caps.at(2).unwrap());
 		self.result = Some(POP3Result::POP3List {
@@ -448,8 +448,8 @@ impl POP3Response {
 
 	fn parse_message(&mut self) {
 		let mut raw = Vec::new();
-		for i in range(1, self.lines.len()-1) {
-			raw.push(String::from_str(self.lines[i].as_slice()));
+		for i in 1 .. self.lines.len()-1 {
+			raw.push(self.lines[i].clone());
 		}
 		self.result = Some(POP3Result::POP3Message{
 			raw: raw
