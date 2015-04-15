@@ -19,7 +19,7 @@ enum POP3StreamTypes {
 	Ssl(SslStream<TcpStream>)
 }
 
-/// The stream to use for i32erfacing with the POP3 Server.
+/// The stream to use for interfacing with the POP3 Server.
 pub struct POP3Stream {
 	stream: POP3StreamTypes,
 	pub host: &'static str,
