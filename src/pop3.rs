@@ -466,6 +466,7 @@ impl POP3Response {
 		})
 	}
 
+
     fn parse_uidl_all(&mut self) {
         let message_data_regex = match Regex::new(r"(\d+) ([\x21-\x7e]+)\r\n") {
             Ok(re) => re,
@@ -491,26 +492,20 @@ impl POP3Response {
     }
 
     fn parse_uidl_one(&mut self) {
-        let message_data_regex = match Regex::new(r"+OK (\d+) ([\x21-\x7e]+)\r\n") {
+        let message_data_regex = match Regex::new(r"\+OK (\d+) ([\x21-\x7e]+)\r\n") {
             Ok(re) => re,
             Err(_) => panic!("Invalid Regex!!"),
         };
 
-        let mut metadata = Vec::new();
-
-        for i in 1 .. self.lines.len() - 1 {
-            let caps = message_data_regex.captures(&self.lines[i]).unwrap();
-            let message_id = FromStr::from_str(caps.at(1).unwrap());
-            let message_uid = caps.at(2).unwrap();
-
-            metadata.push(POP3EmailUidldata {
-                message_id: message_id.unwrap(),
-                message_uid: message_uid.to_owned()
-            });
-        }
+        let caps = message_data_regex.captures(&self.lines[0]).unwrap();
+        let message_id = FromStr::from_str(caps.at(1).unwrap());
+        let message_uid = caps.at(2).unwrap();
 
         self.result = Some(POP3Result::POP3Uidl {
-            emails_metadata: metadata
+            emails_metadata: vec![POP3EmailUidldata{
+                    message_id: message_id.unwrap(),
+                    message_uid: message_uid.to_owned()
+            }]
         });
     }
     
