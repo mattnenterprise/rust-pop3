@@ -5,7 +5,7 @@ extern crate openssl;
 extern crate regex;
 
 use POP3StreamTypes::{Basic, Ssl};
-use POP3Command::{Greet, User, Pass, Stat, ListAll, ListOne, Retr, Dele, Noop, Rset, Quit};
+use POP3Command::{Greet, User, Pass, Stat, UidlAll, UidlOne, ListAll, ListOne, Retr, Dele, Noop, Rset, Quit};
 use std::string::String;
 use std::io::{Error, ErrorKind, Read, Result, Write};
 use std::net::TcpStream;
@@ -34,6 +34,8 @@ enum POP3Command {
 	User,
 	Pass,
 	Stat,
+    UidlAll,
+    UidlOne,
 	ListAll,
 	ListOne,
 	Retr,
@@ -121,6 +123,36 @@ impl POP3Stream {
 			Err(_) => POP3Result::POP3Err
 		}
 	}
+
+    pub fn uidl(&mut self, message_number: Option<i32>) -> POP3Result {
+        if !self.is_authenticated {
+            panic!("login");
+        }
+
+        let uidl_command = match message_number {
+            Some(i) => format!("UIDL {}\r\n", i),
+            None => format!("UIDL\r\n"),
+        };
+        let command_type = match message_number {
+            Some(_) => UidlOne,
+            None => UidlAll,
+        };
+        
+        match self.write_str(&uidl_command) {
+            Ok(_) => {},
+            Err(_) => panic!("Error writing"),
+        }
+
+        match self.read_response(command_type) {
+            Ok(res) => {
+                match res.result {
+                    Some(s) => s,
+                    None => POP3Result::POP3Err
+                }
+            },
+            Err(_) => POP3Result::POP3Err
+        }
+    }
 
 	/// List displays a summary of messages where each message number is shown and the size of the message in bytes.
 	pub fn list(&mut self, message_number: Option<i32>) -> POP3Result {
@@ -304,6 +336,11 @@ pub struct POP3EmailMetadata {
 	pub message_size: i32
 }
 
+pub struct POP3EmailUidldata {
+    pub message_id: i32,
+    pub message_uid: String
+}
+
 pub enum POP3Result {
 	POP3Ok,
 	POP3Err,
@@ -311,6 +348,9 @@ pub enum POP3Result {
 		num_email: i32,
 		mailbox_size: i32
 	},
+    POP3Uidl {
+        emails_metadata: Vec<POP3EmailUidldata>
+    },
 	POP3List {
 		emails_metadata: Vec<POP3EmailMetadata>
 	},
@@ -364,6 +404,13 @@ impl POP3Response {
 						self.complete = true;
 						self.parse_stat()
 					},
+                                    UidlAll => {
+
+                                    },
+                                    UidlOne => {
+                                        self.complete = true;
+                                        self.parse_uidl_one();
+                                    },
 					ListAll => {
 
 					},
@@ -385,6 +432,10 @@ impl POP3Response {
 			if ending_regex.is_match(&l) {
 				self.lines.push(l);
 				match command {
+                                    UidlAll => {
+                                        self.complete = true;
+                                        self.parse_uidl_all();
+                                    },
 					ListAll => {
 						self.complete = true;
 						self.parse_list_all();
@@ -415,6 +466,49 @@ impl POP3Response {
 		})
 	}
 
+
+    fn parse_uidl_all(&mut self) {
+        let message_data_regex = match Regex::new(r"(\d+) ([\x21-\x7e]+)\r\n") {
+            Ok(re) => re,
+            Err(_) => panic!("Invalid Regex!!"),
+        };
+
+        let mut metadata = Vec::new();
+
+        for i in 1 .. self.lines.len() - 1 {
+            let caps = message_data_regex.captures(&self.lines[i]).unwrap();
+            let message_id = FromStr::from_str(caps.at(1).unwrap());
+            let message_uid = caps.at(2).unwrap();
+
+            metadata.push(POP3EmailUidldata {
+                message_id: message_id.unwrap(),
+                message_uid: message_uid.to_owned()
+            });
+        }
+
+        self.result = Some(POP3Result::POP3Uidl {
+            emails_metadata: metadata
+        });
+    }
+
+    fn parse_uidl_one(&mut self) {
+        let message_data_regex = match Regex::new(r"\+OK (\d+) ([\x21-\x7e]+)\r\n") {
+            Ok(re) => re,
+            Err(_) => panic!("Invalid Regex!!"),
+        };
+
+        let caps = message_data_regex.captures(&self.lines[0]).unwrap();
+        let message_id = FromStr::from_str(caps.at(1).unwrap());
+        let message_uid = caps.at(2).unwrap();
+
+        self.result = Some(POP3Result::POP3Uidl {
+            emails_metadata: vec![POP3EmailUidldata{
+                    message_id: message_id.unwrap(),
+                    message_uid: message_uid.to_owned()
+            }]
+        });
+    }
+    
 	fn parse_list_all(&mut self) {
 		let message_data_regex = match Regex::new(r"(\d+) (\d+)\r\n") {
 			Ok(re) => re,
