@@ -49,8 +49,8 @@ impl POP3Stream {
 
 	/// Creates a new POP3Stream.
 	pub fn connect(host: &str, port: u16, ssl_context: Option<SslContext>) -> Result<POP3Stream> {
-		let connect_string = format!("{}:{}", host, port);
-		let tcp_stream = try!(TcpStream::connect(&connect_string[..]));
+		let address = (host, port);
+		let tcp_stream = try!(TcpStream::connect(address));
 		let mut socket = match ssl_context {
 			Some(context) => POP3Stream {
                 stream: Ssl(SslStream::new(&context, tcp_stream).unwrap()),
