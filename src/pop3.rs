@@ -22,7 +22,7 @@ enum POP3StreamTypes {
 /// The stream to use for interfacing with the POP3 Server.
 pub struct POP3Stream {
 	stream: POP3StreamTypes,
-	pub host: &'static str,
+	pub host: String,
 	pub port: u16,
 	pub is_authenticated: bool
 }
@@ -48,12 +48,20 @@ enum POP3Command {
 impl POP3Stream {
 
 	/// Creates a new POP3Stream.
-	pub fn connect(host: &'static str, port: u16, ssl_context: Option<SslContext>) -> Result<POP3Stream> {
+	pub fn connect(host: &str, port: u16, ssl_context: Option<SslContext>) -> Result<POP3Stream> {
 		let connect_string = format!("{}:{}", host, port);
 		let tcp_stream = try!(TcpStream::connect(&connect_string[..]));
 		let mut socket = match ssl_context {
-			Some(context) => POP3Stream {stream: Ssl(SslStream::new(&context, tcp_stream).unwrap()), host: host, port: port, is_authenticated: false},
-			None => POP3Stream {stream: Basic(tcp_stream), host: host, port: port, is_authenticated: false},
+			Some(context) => POP3Stream {
+                stream: Ssl(SslStream::new(&context, tcp_stream).unwrap()),
+                host: host.to_string(),
+                port: port,
+                is_authenticated: false},
+			None => POP3Stream {
+                stream: Basic(tcp_stream),
+                host: host.to_string(),
+                port: port,
+                is_authenticated: false},
 		};
 		match socket.read_response(Greet) {
 			Ok(_) => (),
