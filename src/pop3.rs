@@ -53,7 +53,7 @@ impl POP3Stream {
 		let tcp_stream = try!(TcpStream::connect(address));
 		let mut socket = match ssl_context {
 			Some(context) => POP3Stream {
-                stream: Ssl(SslStream::new(&context, tcp_stream).unwrap()),
+                stream: Ssl(SslStream::connect(&context, tcp_stream).unwrap()),
                 host: host.to_string(),
                 port: port,
                 is_authenticated: false},
@@ -145,7 +145,7 @@ impl POP3Stream {
             Some(_) => UidlOne,
             None => UidlAll,
         };
-        
+
         match self.write_str(&uidl_command) {
             Ok(_) => {},
             Err(_) => panic!("Error writing"),
@@ -516,7 +516,7 @@ impl POP3Response {
             }]
         });
     }
-    
+
 	fn parse_list_all(&mut self) {
 		let message_data_regex = match Regex::new(r"(\d+) (\d+)\r\n") {
 			Ok(re) => re,
