@@ -17,7 +17,7 @@ pop3 = "*"
 ```
 
 ### Usage
-```rs
+```rust
 extern crate pop3;
 extern crate openssl;
 
@@ -42,7 +42,7 @@ fn main() {
 
     let list_all = gmail_socket.list(None);
     match list_all {
-        POP3List {emails_metadata} => { 
+        POP3List {emails_metadata} => {
             for i in emails_metadata.iter() {
                 println!("message_id: {},  message_size: {}", i.message_id, i.message_size);
             }
@@ -59,7 +59,7 @@ fn main() {
         },
         _ => println!("Error for message_25"),
     }
-    
+
     gmail_socket.quit();
 }
 ```
