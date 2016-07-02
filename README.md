@@ -7,6 +7,7 @@ support is wanted just pass in None. The library rust-openssl is used to support
 
 
 [![Build Status](https://travis-ci.org/mattnenterprise/rust-pop3.svg)](https://travis-ci.org/mattnenterprise/rust-pop3)
+[![crates.io](http://meritbadge.herokuapp.com/pop3)](https://crates.io/crates/pop3)
 
 ### Installation
 
