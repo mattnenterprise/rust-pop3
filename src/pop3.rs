@@ -15,6 +15,7 @@ use std::str::FromStr;
 use regex::Regex;
 
 /// Wrapper for a regular TcpStream or a SslStream.
+#[derive(Debug)]
 enum POP3StreamTypes {
 	Basic(TcpStream),
 	Ssl(SslStream<TcpStream>)
@@ -24,8 +25,6 @@ enum POP3StreamTypes {
 #[derive(Debug)]
 pub struct POP3Stream {
 	stream: POP3StreamTypes,
-	pub host: String,
-	pub port: u16,
 	pub is_authenticated: bool
 }
 
@@ -54,14 +53,10 @@ impl POP3Stream {
 		let tcp_stream = TcpStream::connect(addr)?;
 		let mut socket = match ssl_context {
 			Some(context) => POP3Stream {
-                host: host.to_string(),
-                port: port,
                 stream: Ssl(SslConnector::connect(&context, domain,tcp_stream).unwrap()),
                 is_authenticated: false},
 			None => POP3Stream {
                 stream: Basic(tcp_stream),
-                host: host.to_string(),
-                port: port,
                 is_authenticated: false},
 		};
 		match socket.read_response(Greet) {
