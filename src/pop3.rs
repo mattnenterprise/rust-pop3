@@ -7,23 +7,24 @@ extern crate regex;
 use POP3StreamTypes::{Basic, Ssl};
 use POP3Command::{Greet, User, Pass, Stat, UidlAll, UidlOne, ListAll, ListOne, Retr, Dele, Noop, Rset, Quit};
 use std::string::String;
-use std::io::{Error, ErrorKind, Read, Result, Write};
-use std::net::TcpStream;
-use openssl::ssl::{SslContext, SslStream};
+use std::io::prelude::*;
+use std::io::{Error, ErrorKind, Result};
+use std::net::{ToSocketAddrs,TcpStream};
+use openssl::ssl::{SslConnector, SslStream};
 use std::str::FromStr;
 use regex::Regex;
 
 /// Wrapper for a regular TcpStream or a SslStream.
+#[derive(Debug)]
 enum POP3StreamTypes {
 	Basic(TcpStream),
 	Ssl(SslStream<TcpStream>)
 }
 
 /// The stream to use for interfacing with the POP3 Server.
+#[derive(Debug)]
 pub struct POP3Stream {
 	stream: POP3StreamTypes,
-	pub host: String,
-	pub port: u16,
 	pub is_authenticated: bool
 }
 
@@ -48,19 +49,14 @@ enum POP3Command {
 impl POP3Stream {
 
 	/// Creates a new POP3Stream.
-	pub fn connect(host: &str, port: u16, ssl_context: Option<SslContext>) -> Result<POP3Stream> {
-		let address = (host, port);
-		let tcp_stream = try!(TcpStream::connect(address));
+	pub fn connect<A:ToSocketAddrs>(addr: A,ssl_context: Option<SslConnector>,domain: &str) -> Result<POP3Stream> {
+		let tcp_stream = TcpStream::connect(addr)?;
 		let mut socket = match ssl_context {
 			Some(context) => POP3Stream {
-                stream: Ssl(SslStream::connect(&context, tcp_stream).unwrap()),
-                host: host.to_string(),
-                port: port,
+                stream: Ssl(SslConnector::connect(&context, domain,tcp_stream).unwrap()),
                 is_authenticated: false},
 			None => POP3Stream {
                 stream: Basic(tcp_stream),
-                host: host.to_string(),
-                port: port,
                 is_authenticated: false},
 		};
 		match socket.read_response(Greet) {
@@ -339,16 +335,19 @@ impl POP3Stream {
 	}
 }
 
+#[derive(Clone,Copy,Debug)]
 pub struct POP3EmailMetadata {
 	pub message_id: i32,
 	pub message_size: i32
 }
 
+#[derive(Clone,Debug)]
 pub struct POP3EmailUidldata {
     pub message_id: i32,
     pub message_uid: String
 }
 
+#[derive(Debug)]
 pub enum POP3Result {
 	POP3Ok,
 	POP3Err,
@@ -357,16 +356,17 @@ pub enum POP3Result {
 		mailbox_size: i32
 	},
     POP3Uidl {
-        emails_metadata: Vec<POP3EmailUidldata>
+        emails_metadata: Vec<POP3EmailUidldata>,
     },
 	POP3List {
-		emails_metadata: Vec<POP3EmailMetadata>
+		emails_metadata: Vec<POP3EmailMetadata>,
 	},
 	POP3Message {
-		raw: Vec<String>
-	}
+		raw: Vec<String>,
+	},
 }
 
+#[derive(Default)]
 struct POP3Response {
 	complete: bool,
 	lines: Vec<String>,
@@ -466,8 +466,8 @@ impl POP3Response {
 			Err(_) => panic!("Invalid Regex!!"),
 		};
 		let caps = stat_regex.captures(&self.lines[0]).unwrap();
-		let num_emails = FromStr::from_str(caps.at(1).unwrap());
-		let total_email_size = FromStr::from_str(caps.at(2).unwrap());
+		let num_emails = FromStr::from_str(caps.get(1).unwrap().as_str());
+		let total_email_size = FromStr::from_str(caps.get(2).unwrap().as_str());
 		self.result = Some(POP3Result::POP3Stat {
 			num_email: num_emails.unwrap(),
 			mailbox_size: total_email_size.unwrap()
@@ -485,8 +485,8 @@ impl POP3Response {
 
         for i in 1 .. self.lines.len() - 1 {
             let caps = message_data_regex.captures(&self.lines[i]).unwrap();
-            let message_id = FromStr::from_str(caps.at(1).unwrap());
-            let message_uid = caps.at(2).unwrap();
+            let message_id = FromStr::from_str(caps.get(1).unwrap().as_str());
+            let message_uid = caps.get(2).unwrap().as_str();
 
             metadata.push(POP3EmailUidldata {
                 message_id: message_id.unwrap(),
@@ -506,8 +506,8 @@ impl POP3Response {
         };
 
         let caps = message_data_regex.captures(&self.lines[0]).unwrap();
-        let message_id = FromStr::from_str(caps.at(1).unwrap());
-        let message_uid = caps.at(2).unwrap();
+        let message_id = FromStr::from_str(caps.get(1).unwrap().as_str());
+        let message_uid = caps.get(2).unwrap().as_str();
 
         self.result = Some(POP3Result::POP3Uidl {
             emails_metadata: vec![POP3EmailUidldata{
@@ -526,8 +526,8 @@ impl POP3Response {
 
 		for i in 1 .. self.lines.len()-1 {
 			let caps = message_data_regex.captures(&self.lines[i]).unwrap();
-			let message_id = FromStr::from_str(caps.at(1).unwrap());
-			let message_size = FromStr::from_str(caps.at(2).unwrap());
+			let message_id = FromStr::from_str(caps.get(1).unwrap().as_str());
+			let message_size = FromStr::from_str(caps.get(2).unwrap().as_str());
 			metadata.push(POP3EmailMetadata{ message_id: message_id.unwrap(), message_size: message_size.unwrap()});
 		}
 		self.result = Some(POP3Result::POP3List {
@@ -541,8 +541,8 @@ impl POP3Response {
 			Err(_) => panic!("Invalid Regex!!"),
 		};
 		let caps = stat_regex.captures(&self.lines[0]).unwrap();
-		let message_id = FromStr::from_str(caps.at(1).unwrap());
-		let message_size = FromStr::from_str(caps.at(2).unwrap());
+		let message_id = FromStr::from_str(caps.get(1).unwrap().as_str());
+		let message_size = FromStr::from_str(caps.get(2).unwrap().as_str());
 		self.result = Some(POP3Result::POP3List {
 			emails_metadata: vec![POP3EmailMetadata{ message_id: message_id.unwrap(), message_size: message_size.unwrap()}]
 		});

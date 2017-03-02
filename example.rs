@@ -1,12 +1,12 @@
 extern crate pop3;
 extern crate openssl;
 
-use openssl::ssl::{SslContext, SslMethod};
+use openssl::ssl::{SslConnectorBuilder, SslMethod};
 use pop3::POP3Stream;
 use pop3::POP3Result::{POP3Stat, POP3List, POP3Message};
 
 fn main() {
-	let mut gmail_socket = match POP3Stream::connect("pop.gmail.com", 995, Some(SslContext::new(SslMethod::Sslv23).unwrap())) {
+	let mut gmail_socket = match POP3Stream::connect(("pop.gmail.com", 995), Some(SslConnectorBuilder::new(SslMethod::tls()).unwrap().build()),"pop.gmail.com") {
         Ok(s) => s,
         Err(e) => panic!("{}", e)
     };
@@ -22,7 +22,7 @@ fn main() {
 
     let list_all = gmail_socket.list(None);
     match list_all {
-        POP3List {emails_metadata} => { 
+        POP3List {emails_metadata} => {
             for i in emails_metadata.iter() {
                 println!("message_id: {},  message_size: {}", i.message_id, i.message_size);
             }
@@ -39,6 +39,6 @@ fn main() {
         },
         _ => println!("Error for message_25"),
     }
-    
+
     gmail_socket.quit();
 }
