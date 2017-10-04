@@ -4,6 +4,9 @@
 extern crate openssl;
 extern crate regex;
 
+#[macro_use]
+extern crate lazy_static;
+
 use POP3StreamTypes::{Basic, Ssl};
 use POP3Command::{Greet, User, Pass, Stat, UidlAll, UidlOne, ListAll, ListOne, Retr, Dele, Noop, Rset, Quit};
 use std::string::String;
@@ -13,6 +16,16 @@ use std::net::{ToSocketAddrs,TcpStream};
 use openssl::ssl::{SslConnector, SslStream};
 use std::str::FromStr;
 use regex::Regex;
+
+lazy_static! {
+    static ref ENDING_REGEX: Regex = Regex::new(r"^\.\r\n$").unwrap();
+    static ref OK_REGEX: Regex = Regex::new(r"\+OK(.*)").unwrap();
+    static ref ERR_REGEX: Regex = Regex::new(r"-ERR(.*)").unwrap();
+    static ref STAT_REGEX: Regex = Regex::new(r"\+OK (\d+) (\d+)\r\n").unwrap();
+    static ref MESSAGE_DATA_UIDL_ALL_REGEX: Regex = Regex::new(r"(\d+) ([\x21-\x7e]+)\r\n").unwrap();
+    static ref MESSAGE_DATA_UIDL_ONE_REGEX: Regex = Regex::new(r"\+OK (\d+) ([\x21-\x7e]+)\r\n").unwrap();
+    static ref MESSAGE_DATA_LIST_ALL_REGEX: Regex = Regex::new(r"(\d+) (\d+)\r\n").unwrap();
+}
 
 /// Wrapper for a regular TcpStream or a SslStream.
 #[derive(Debug)]
@@ -383,26 +396,10 @@ impl POP3Response {
 	}
 
 	fn add_line(&mut self, line: String, command: POP3Command) {
-		let l = line.clone();
-		let ending_regex = match Regex::new(r"^\.\r\n$") {
-			Ok(re) => re,
-			Err(_) => panic!("Invalid Regex!!"),
-		};
-
 		//We are retreiving status line
 		if self.lines.len() == 0 {
-			let ok_regex = match Regex::new(r"\+OK(.*)") {
-				Ok(re) => re,
-				Err(_) => panic!("Invalid Regex!!"),
-			};
-
-			let err_regex = match Regex::new(r"-ERR(.*)") {
-				Ok(re) => re,
-				Err(_) => panic!("Invalid Regex!!"),
-			};
-
-			if ok_regex.is_match(&l) {
-				self.lines.push(l);
+			if OK_REGEX.is_match(&line) {
+				self.lines.push(line);
 				match command {
 					Greet|User|Pass|Quit|Dele|Rset => {
 						self.result = Some(POP3Result::POP3Ok);
@@ -431,14 +428,14 @@ impl POP3Response {
 					},
 					_ => self.complete = true,
 				}
-			} else if err_regex.is_match(&l) {
-				self.lines.push(l);
+			} else if ERR_REGEX.is_match(&line) {
+				self.lines.push(line);
 				self.result = Some(POP3Result::POP3Err);
 				self.complete = true;
 			}
 		} else {
-			if ending_regex.is_match(&l) {
-				self.lines.push(l);
+			if ENDING_REGEX.is_match(&line) {
+				self.lines.push(line);
 				match command {
                                     UidlAll => {
                                         self.complete = true;
@@ -455,17 +452,13 @@ impl POP3Response {
 					_ => self.complete = true,
 				}
 			} else {
-				self.lines.push(l);
+				self.lines.push(line);
 			}
 		}
 	}
 
 	fn parse_stat(&mut self) {
-		let stat_regex = match Regex::new(r"\+OK (\d+) (\d+)\r\n") {
-			Ok(re) => re,
-			Err(_) => panic!("Invalid Regex!!"),
-		};
-		let caps = stat_regex.captures(&self.lines[0]).unwrap();
+		let caps = STAT_REGEX.captures(&self.lines[0]).unwrap();
 		let num_emails = FromStr::from_str(caps.get(1).unwrap().as_str());
 		let total_email_size = FromStr::from_str(caps.get(2).unwrap().as_str());
 		self.result = Some(POP3Result::POP3Stat {
@@ -476,15 +469,10 @@ impl POP3Response {
 
 
     fn parse_uidl_all(&mut self) {
-        let message_data_regex = match Regex::new(r"(\d+) ([\x21-\x7e]+)\r\n") {
-            Ok(re) => re,
-            Err(_) => panic!("Invalid Regex!!"),
-        };
-
         let mut metadata = Vec::new();
 
-        for i in 1 .. self.lines.len() - 1 {
-            let caps = message_data_regex.captures(&self.lines[i]).unwrap();
+        for i in 1..self.lines.len() - 1 {
+            let caps = MESSAGE_DATA_UIDL_ALL_REGEX.captures(&self.lines[i]).unwrap();
             let message_id = FromStr::from_str(caps.get(1).unwrap().as_str());
             let message_uid = caps.get(2).unwrap().as_str();
 
@@ -500,12 +488,7 @@ impl POP3Response {
     }
 
     fn parse_uidl_one(&mut self) {
-        let message_data_regex = match Regex::new(r"\+OK (\d+) ([\x21-\x7e]+)\r\n") {
-            Ok(re) => re,
-            Err(_) => panic!("Invalid Regex!!"),
-        };
-
-        let caps = message_data_regex.captures(&self.lines[0]).unwrap();
+        let caps = MESSAGE_DATA_UIDL_ONE_REGEX.captures(&self.lines[0]).unwrap();
         let message_id = FromStr::from_str(caps.get(1).unwrap().as_str());
         let message_uid = caps.get(2).unwrap().as_str();
 
@@ -518,14 +501,10 @@ impl POP3Response {
     }
 
 	fn parse_list_all(&mut self) {
-		let message_data_regex = match Regex::new(r"(\d+) (\d+)\r\n") {
-			Ok(re) => re,
-			Err(_) => panic!("Invalid Regex!!"),
-		};
 		let mut metadata = Vec::new();
 
 		for i in 1 .. self.lines.len()-1 {
-			let caps = message_data_regex.captures(&self.lines[i]).unwrap();
+			let caps = MESSAGE_DATA_LIST_ALL_REGEX.captures(&self.lines[i]).unwrap();
 			let message_id = FromStr::from_str(caps.get(1).unwrap().as_str());
 			let message_size = FromStr::from_str(caps.get(2).unwrap().as_str());
 			metadata.push(POP3EmailMetadata{ message_id: message_id.unwrap(), message_size: message_size.unwrap()});
@@ -536,11 +515,7 @@ impl POP3Response {
 	}
 
 	fn parse_list_one(&mut self) {
-		let stat_regex = match Regex::new(r"\+OK (\d+) (\d+)\r\n") {
-			Ok(re) => re,
-			Err(_) => panic!("Invalid Regex!!"),
-		};
-		let caps = stat_regex.captures(&self.lines[0]).unwrap();
+		let caps = STAT_REGEX.captures(&self.lines[0]).unwrap();
 		let message_id = FromStr::from_str(caps.get(1).unwrap().as_str());
 		let message_size = FromStr::from_str(caps.get(2).unwrap().as_str());
 		self.result = Some(POP3Result::POP3List {
