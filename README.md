@@ -5,9 +5,12 @@ POP3 Client for Rust
 This client has SSL support. SSL is configured using an SSLContext that is passed into the connect method of a POP3Stream. If no SSL
 support is wanted just pass in None. The library rust-openssl is used to support SSL for this project.
 
+[![Number of Crate Downloads](https://img.shields.io/crates/d/pop3.svg)](https://crates.io/crates/pop3)
+[![Crate Version](https://img.shields.io/crates/v/pop3.svg)](https://crates.io/crates/pop3)
+[![Crate License](https://img.shields.io/crates/l/pop3.svg)](https://crates.io/crates/pop3)
+[![Travis CI Build Status](https://travis-ci.org/mattnenterprise/rust-pop3.svg)](https://travis-ci.org/mattnenterprise/rust-pop3)
+[![Coverage Status](https://coveralls.io/repos/github/mattnenterprise/rust-pop3/badge.svg?branch=master)](https://coveralls.io/github/mattnenterprise/rust-pop3?branch=master)
 
-[![Build Status](https://travis-ci.org/mattnenterprise/rust-pop3.svg)](https://travis-ci.org/mattnenterprise/rust-pop3)
-[![crates.io](http://meritbadge.herokuapp.com/pop3)](https://crates.io/crates/pop3)
 
 ### Usage
 ```rust
