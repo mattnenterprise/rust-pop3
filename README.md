@@ -11,6 +11,7 @@ support is wanted just pass in None. The library rust-openssl is used to support
 [![Travis CI Build Status](https://travis-ci.org/mattnenterprise/rust-pop3.svg)](https://travis-ci.org/mattnenterprise/rust-pop3)
 [![Coverage Status](https://coveralls.io/repos/github/mattnenterprise/rust-pop3/badge.svg?branch=master)](https://coveralls.io/github/mattnenterprise/rust-pop3?branch=master)
 
+[Documentation](https://docs.rs/pop3/)
 
 ### Usage
 ```rust
