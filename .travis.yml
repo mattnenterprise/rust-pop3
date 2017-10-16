@@ -4,9 +4,7 @@ language: rust
 addons:
   apt:
     packages:
-    - libcurl4-openssl-dev
-    - libelf-dev
-    - libdw-dev
+      - libssl-dev
 
 rust:
 - stable
@@ -17,18 +15,13 @@ matrix:
   allow_failures:
     - rust: nightly
 
-before_install:
-- |
-  pip install 'travis-cargo<0.2' --user &&
-  export PATH=$HOME/.local/bin:$PATH
-
 script:
 - |
-  travis-cargo build &&
-  travis-cargo test &&
-  travis-cargo bench &&
-  travis-cargo --only stable doc
+  cargo build &&
+  cargo test
 
 after_success:
-- travis-cargo --only stable doc-upload
-- travis-cargo coveralls --no-sudo
+- if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_RUST_VERSION" == "stable" ]]; then
+    bash <(curl https://raw.githubusercontent.com/xd009642/tarpaulin/master/travis-install.sh);
+    cargo tarpaulin --ciserver travis-ci --coveralls $TRAVIS_JOB_ID;
+  fi
