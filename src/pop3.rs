@@ -125,7 +125,10 @@ impl POP3Stream {
                     Err(_) => panic!("Error writing"),
                 }
                 match self.read_response(Pass) {
-                    Ok(_) => POP3Result::POP3Ok,
+                    Ok(res) => match res.result {
+                        Some(s) => s,
+                        None => POP3Result::POP3Err,
+                    },
                     Err(_) => panic!("Failure to use PASS"),
                 }
             }
