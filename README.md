@@ -18,12 +18,12 @@ support is wanted just pass in None. The library rust-openssl is used to support
 extern crate pop3;
 extern crate openssl;
 
-use openssl::ssl::{SslContext, SslMethod};
+use openssl::ssl::{SslConnector, SslMethod};
 use pop3::POP3Stream;
 use pop3::POP3Result::{POP3Stat, POP3List, POP3Message};
 
 fn main() {
-    let mut gmail_socket = match POP3Stream::connect("pop.gmail.com", 995, Some(SslContext::new(SslMethod::Sslv23).unwrap())) {
+	let mut gmail_socket = match POP3Stream::connect(("pop.gmail.com", 995), Some(SslConnector::builder(SslMethod::tls()).unwrap().build()),"pop.gmail.com") {
         Ok(s) => s,
         Err(e) => panic!("{}", e)
     };
@@ -32,9 +32,9 @@ fn main() {
 
     let stat = gmail_socket.stat();
     match stat {
-        POP3Stat {num_email,
-                  mailbox_size} => println!("num_email: {},  mailbox_size:{}", num_email, mailbox_size),
-        _ => println!("Err for stat"),
+    	POP3Stat {num_email,
+				  mailbox_size} => println!("num_email: {},  mailbox_size:{}", num_email, mailbox_size),
+		_ => println!("Err for stat"),
     }
 
     let list_all = gmail_socket.list(None);
