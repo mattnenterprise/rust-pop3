@@ -18,6 +18,6 @@ name = "example"
 path = "example.rs"
 
 [dependencies]
-openssl = "0.9"
-regex = "0.2"
-lazy_static = "0.2"
+openssl = "0.10"
+regex = "1"
+lazy_static = "1"
