@@ -1,21 +1,16 @@
 [package]
-
-name = "pop3"
-version = "1.0.6"
+name = "rs-pop3"
+version = "1.0.7"
 authors = ["Matt McCoy <mattnenterprise@yahoo.com>"]
-homepage = "https://github.com/mattnenterprise/rust-pop3"
-repository = "https://github.com/mattnenterprise/rust-pop3"
+homepage = "https://github.com/k8scat/rust-pop3"
+repository = "https://github.com/k8scat/rust-pop3"
 description = "POP3 client for Rust"
 readme = "README.md"
 license = "MIT"
 
 [lib]
-name = "pop3"
+name = "rs_pop3"
 path = "src/pop3.rs"
-
-[[bin]]
-name = "example"
-path = "example.rs"
 
 [dependencies]
 openssl = "0.10"

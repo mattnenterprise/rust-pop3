@@ -1,5 +1,8 @@
 rust-pop3
 ================
+
+**Forked https://github.com/mattnenterprise/rust-pop3**
+
 POP3 Client for Rust
 
 This client has SSL support. SSL is configured using an SSLContext that is passed into the connect method of a POP3Stream. If no SSL
