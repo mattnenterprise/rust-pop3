@@ -1,6 +1,6 @@
 [package]
 name = "rs-pop3"
-version = "1.0.7"
+version = "1.0.8"
 authors = ["Matt McCoy <mattnenterprise@yahoo.com>", "K8sCat <k8scat@gmail.com>"]
 homepage = "https://github.com/k8scat/rust-pop3"
 repository = "https://github.com/k8scat/rust-pop3"
