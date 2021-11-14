@@ -369,7 +369,7 @@ pub enum POP3Result {
     POP3Err,
     POP3Stat {
         num_email: i32,
-        mailbox_size: i32,
+        mailbox_size: i64,
     },
     POP3Uidl {
         emails_metadata: Vec<POP3EmailUidldata>,
@@ -457,7 +457,7 @@ impl POP3Response {
     fn parse_stat(&mut self) {
         let caps = STAT_REGEX.captures(&self.lines[0]).unwrap();
         let num_emails = FromStr::from_str(caps.get(1).unwrap().as_str());
-        let total_email_size = FromStr::from_str(caps.get(2).unwrap().as_str());
+        let total_email_size = caps.get(2).unwrap().as_str().parse::<i64>();
         self.result = Some(POP3Result::POP3Stat {
             num_email: num_emails.unwrap(),
             mailbox_size: total_email_size.unwrap(),
