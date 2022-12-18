@@ -1,6 +1,3 @@
-extern crate pop3;
-extern crate openssl;
-
 use openssl::ssl::{SslConnector, SslMethod};
 use pop3::POP3Stream;
 use pop3::POP3Result::{POP3Stat, POP3List, POP3Message, POP3Err};
