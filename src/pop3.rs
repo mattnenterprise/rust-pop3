@@ -1,9 +1,6 @@
 #![crate_name = "rs_pop3"]
 #![crate_type = "lib"]
 
-extern crate openssl;
-extern crate regex;
-
 #[macro_use]
 extern crate lazy_static;
 
