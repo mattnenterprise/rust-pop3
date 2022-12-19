@@ -27,7 +27,7 @@ rs-pop3 = "1.0.8"
 `main.rs`
 
 ```rust
-use native_tls::{TlsConnector,TlsStream,TlsConnectorBuilder};
+use native_tls::TlsConnector;
 use rs_pop3::POP3Stream;
 use rs_pop3::POP3Result::{POP3Stat, POP3List, POP3Message, POP3Err};
 
