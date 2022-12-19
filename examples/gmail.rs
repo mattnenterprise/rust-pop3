@@ -1,12 +1,10 @@
-extern crate pop3;
-extern crate openssl;
-
-use openssl::ssl::{SslConnector, SslMethod};
-use pop3::POP3Stream;
-use pop3::POP3Result::{POP3Stat, POP3List, POP3Message, POP3Err};
+use native_tls::TlsConnector;
+use rs_pop3::POP3Stream;
+use rs_pop3::POP3Result::{POP3Stat, POP3List, POP3Message, POP3Err};
 
 fn main() {
-	let mut gmail_socket = match POP3Stream::connect(("pop.gmail.com", 995), Some(SslConnector::builder(SslMethod::tls()).unwrap().build()),"pop.gmail.com") {
+	// let mut gmail_socket = match POP3Stream::connect(("pop.gmail.com", 995), Some(SslConnector::builder(SslMethod::tls()).unwrap().build()),"pop.gmail.com") {
+	let mut gmail_socket = match POP3Stream::connect(("pop.gmail.com", 995), Some(TlsConnector::new().unwrap()),"pop.gmail.com") {
         Ok(s) => s,
         Err(e) => panic!("{}", e)
     };

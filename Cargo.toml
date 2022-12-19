@@ -1,23 +1,22 @@
 [package]
-
-name = "pop3"
-version = "1.0.6"
-authors = ["Matt McCoy <mattnenterprise@yahoo.com>"]
-homepage = "https://github.com/mattnenterprise/rust-pop3"
-repository = "https://github.com/mattnenterprise/rust-pop3"
+name = "rs-pop3"
+version = "1.0.9"
+edition = "2021"
+authors = ["Matt McCoy <mattnenterprise@yahoo.com>", "K8sCat <k8scat@gmail.com>", "caret"]
+homepage = "https://github.com/k8scat/rust-pop3"
+repository = "https://github.com/k8scat/rust-pop3"
 description = "POP3 client for Rust"
 readme = "README.md"
 license = "MIT"
 
 [lib]
-name = "pop3"
+name = "rs_pop3"
 path = "src/pop3.rs"
 
-[[bin]]
-name = "example"
-path = "example.rs"
-
 [dependencies]
-openssl = "0.10"
-regex = "1"
-lazy_static = "1"
+lazy_static = "1.4.0"
+native-tls = "0.2.11"
+regex = "1.7.0"
+#openssl = "0.10"
+#regex = "1"
+#lazy_static = "1"
