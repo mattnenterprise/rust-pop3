@@ -1,4 +1,5 @@
-use openssl::ssl::{SslConnector, SslMethod};
+//use openssl::ssl::{SslConnector, SslMethod};
+use native_tls::{TlsConnector,TlsStream};
 use rs_pop3::POP3Stream;
 use rs_pop3::POP3Result::{POP3Stat, POP3List, POP3Message, POP3Err};
 

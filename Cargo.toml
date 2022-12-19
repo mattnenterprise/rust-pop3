@@ -1,8 +1,8 @@
 [package]
 name = "rs-pop3"
-version = "2.0.8"
+version = "1.0.9"
 edition = "2021"
-authors = ["Matt McCoy <mattnenterprise@yahoo.com>", "K8sCat <k8scat@gmail.com>", "caret <c4r3t@yubi.moe>"]
+authors = ["Matt McCoy <mattnenterprise@yahoo.com>", "K8sCat <k8scat@gmail.com>", "caret"]
 homepage = "https://github.com/k8scat/rust-pop3"
 repository = "https://github.com/k8scat/rust-pop3"
 description = "POP3 client for Rust"
@@ -15,7 +15,7 @@ path = "src/pop3.rs"
 
 [dependencies]
 lazy_static = "1.4.0"
-openssl = "0.10.44"
+native-tls = "0.2.11"
 regex = "1.7.0"
 #openssl = "0.10"
 #regex = "1"

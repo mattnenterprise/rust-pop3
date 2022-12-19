@@ -4,7 +4,8 @@
 #[macro_use]
 extern crate lazy_static;
 
-use openssl::ssl::{SslConnector, SslStream};
+// use openssl::ssl::{SslConnector, SslStream};
+use native_tls::{TlsConnector,TlsStream};
 use regex::Regex;
 use std::io::prelude::*;
 use std::io::{Error, ErrorKind, Result};
@@ -33,7 +34,7 @@ lazy_static! {
 #[derive(Debug)]
 enum POP3StreamTypes {
     Basic(TcpStream),
-    Ssl(SslStream<TcpStream>),
+    Ssl(TlsStream<TcpStream>),
 }
 
 /// The stream to use for interfacing with the POP3 Server.
@@ -65,13 +66,14 @@ impl POP3Stream {
     /// Creates a new POP3Stream.
     pub fn connect<A: ToSocketAddrs>(
         addr: A,
-        ssl_context: Option<SslConnector>,
+        ssl_context: Option<TlsConnector>,
         domain: &str,
     ) -> Result<POP3Stream> {
         let tcp_stream = TcpStream::connect(addr)?;
         let mut socket = match ssl_context {
-            Some(context) => POP3Stream {
-                stream: Ssl(SslConnector::connect(&context, domain, tcp_stream).unwrap()),
+            Some(_context) => POP3Stream {
+                // stream: Ssl(SslConnector::connect(&context, domain, tcp_stream).unwrap()),
+                stream: Ssl(TlsConnector::new().unwrap().connect(domain, tcp_stream).unwrap()),
                 is_authenticated: false,
             },
             None => POP3Stream {
