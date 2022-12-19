@@ -5,7 +5,7 @@
 POP3 Client for Rust
 
 This client has SSL support. SSL is configured using an SSLContext that is passed into the connect method of a POP3Stream. If no SSL
-support is wanted just pass in None. The library rust-openssl is used to support SSL for this project.
+support is wanted just pass in None. The library was updated to use native-tls to support SSL connectivity for this project.
 
 [![Number of Crate Downloads](https://img.shields.io/crates/d/rs-pop3.svg)](https://crates.io/crates/rs-pop3)
 [![Crate Version](https://img.shields.io/crates/v/rs-pop3.svg)](https://crates.io/crates/rs-pop3)
@@ -18,8 +18,8 @@ support is wanted just pass in None. The library rust-openssl is used to support
 
 ```toml
 [dependencies]
+native-tls = "0.2.11"
 rs-pop3 = "1.0.7"
-openssl = "0.10"
 ```
 
 ```rust
