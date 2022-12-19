@@ -16,22 +16,23 @@ support is wanted just pass in None. The library was updated to use native-tls t
 
 ## Usage
 
+`Cargo.toml`
+
 ```toml
 [dependencies]
 native-tls = "0.2.11"
-rs-pop3 = "1.0.7"
+rs-pop3 = "1.0.8"
 ```
 
-```rust
-extern crate rs_pop3;
-extern crate openssl;
+`main.rs`
 
-use openssl::ssl::{SslConnector, SslMethod};
-use pop3::POP3Stream;
-use pop3::POP3Result::{POP3Stat, POP3List, POP3Message, POP3Err};
+```rust
+use native_tls::{TlsConnector,TlsStream,TlsConnectorBuilder};
+use rs_pop3::POP3Stream;
+use rs_pop3::POP3Result::{POP3Stat, POP3List, POP3Message, POP3Err};
 
 fn main() {
-    let mut gmail_socket = match POP3Stream::connect(("pop.gmail.com", 995), Some(SslConnector::builder(SslMethod::tls()).unwrap().build()),"pop.gmail.com") {
+    	let mut gmail_socket = match POP3Stream::connect(("pop.gmail.com", 995), Some(TlsConnector::new().unwrap()),"pop.gmail.com") {
         Ok(s) => s,
         Err(e) => panic!("{}", e)
     };
